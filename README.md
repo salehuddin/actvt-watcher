@@ -22,13 +22,13 @@ The full documentation and technical specifications for configuring and using th
 
 ## 🛠️ Installation
 
-1. Download the latest `.zip` release of the plugin or clone this repository into your `wp-content/plugins/` directory:
-   ```bash
-   git clone https://github.com/salehuddin/actvt-watcher.git
-   ```
-2. Navigate to your WordPress Admin dashboard -> **Plugins**.
-3. Locate **ACTVT Watcher** and click **Activate**.
-4. Upon activation, the plugin automatically runs `dbDelta()` to create its custom tables. No immediate configuration is required; it begins logging instantly.
+1. On this GitHub page, click the green **Code** button at the top right, and select **Download ZIP**.
+2. Log into your WordPress Admin dashboard.
+3. Navigate to **Plugins** → **Add New Plugin** (or just **Add New**).
+4. Click **Upload Plugin** at the top.
+5. Choose the downloaded `.zip` file and click **Install Now**.
+6. Once installed, click **Activate Plugin**.
+7. The plugin automatically creates its custom database table upon activation and begins logging immediately. No external setup is required!
 
 ## 🤝 Contributing
 
