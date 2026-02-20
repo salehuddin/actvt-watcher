@@ -1,0 +1,9 @@
+# Standard WordPress gitignore
+node_modules/
+vendor/
+.env
+.DS_Store
+Thumbs.db
+*.log
+*.zip
+*.tar.gz
