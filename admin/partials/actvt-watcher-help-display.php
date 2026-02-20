@@ -149,9 +149,9 @@ function actvt_md_inline( $text ) {
     return $text;
 }
 
-// ── Read README.md ───────────────────────────────────────────────────────────
-$readme_path = ACTVT_WATCHER_PATH . 'README.md';
-$readme_raw  = file_exists( $readme_path ) ? file_get_contents( $readme_path ) : '# Documentation\n\n_README.md not found._';
+// ── Read USER_GUIDE.md ───────────────────────────────────────────────────────────
+$readme_path = ACTVT_WATCHER_PATH . 'USER_GUIDE.md';
+$readme_raw  = file_exists( $readme_path ) ? file_get_contents( $readme_path ) : '# Documentation\n\n_USER_GUIDE.md not found._';
 $readme_html = actvt_parse_markdown( $readme_raw );
 
 // Build TOC from h2/h3 headings
