@@ -1,11 +1,13 @@
 <?php
 /**
  * Plugin Name:       ACTVT Watcher
- * Plugin URI:        https://example.com/actvt-watcher
+ * Plugin URI:        https://github.com/salehuddin/actvt-watcher
  * Description:       Passively captures state changes across the WordPress ecosystem.
- * Version:           1.0.0
- * Author:            Your Name
- * Author URI:        https://example.com
+ * Version:           1.0.1
+ * Author:            Salehuddin
+ * Author URI:        https://github.com/salehuddin
+ * License:           GPL-2.0+
+ * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       actvt-watcher
  * Domain Path:       /languages
  */
@@ -15,7 +17,7 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
-define( 'ACTVT_WATCHER_VERSION', '1.0.0' );
+define( 'ACTVT_WATCHER_VERSION', '1.0.1' );
 define( 'ACTVT_WATCHER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ACTVT_WATCHER_URL', plugin_dir_url( __FILE__ ) );
 

@@ -1,5 +1,10 @@
 <?php
 
+// If this file is called directly, abort.
+if ( ! defined( 'WPINC' ) ) {
+	die;
+}
+
 /**
  * The admin-specific functionality of the plugin.
  */
@@ -28,8 +33,8 @@ class Actvt_Watcher_Admin {
 	 */
 	public function add_plugin_admin_menu() {
 		add_menu_page(
-			'ACTVT Watcher Logs', 
-			'ACTVT Watcher', 
+			__( 'ACTVT Watcher Logs', 'actvt-watcher' ), 
+			__( 'ACTVT Watcher', 'actvt-watcher' ), 
 			'manage_options', 
 			$this->plugin_name, 
 			array( $this, 'display_plugin_admin_page' ), 
@@ -38,16 +43,16 @@ class Actvt_Watcher_Admin {
 		);
 		add_submenu_page(
 			$this->plugin_name,
-			'Settings — ACTVT Watcher',
-			'Settings',
+			__( 'Settings — ACTVT Watcher', 'actvt-watcher' ),
+			__( 'Settings', 'actvt-watcher' ),
 			'manage_options',
 			'actvt-watcher-settings',
 			array( $this, 'display_settings_page' )
 		);
 		add_submenu_page(
 			$this->plugin_name,
-			'How-To &amp; Docs — ACTVT Watcher',
-			'How-To &amp; Docs',
+			__( 'How-To &amp; Docs — ACTVT Watcher', 'actvt-watcher' ),
+			__( 'How-To & Docs', 'actvt-watcher' ),
 			'manage_options',
 			'actvt-watcher-help',
 			array( $this, 'display_help_page' )
@@ -80,7 +85,7 @@ class Actvt_Watcher_Admin {
 	 */
 	public function save_settings() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Insufficient permissions.' );
+			wp_die( esc_html__( 'Insufficient permissions.', 'actvt-watcher' ) );
 		}
 		check_admin_referer( 'actvt_save_settings' );
 
@@ -201,7 +206,7 @@ class Actvt_Watcher_Admin {
 	 */
 	public function purge_now() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Insufficient permissions.' );
+			wp_die( esc_html__( 'Insufficient permissions.', 'actvt-watcher' ) );
 		}
 		check_admin_referer( 'actvt_purge_now' );
 
@@ -226,10 +231,10 @@ class Actvt_Watcher_Admin {
 	 */
 	public function export_logs() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Insufficient permissions.' );
+			wp_die( esc_html__( 'Insufficient permissions.', 'actvt-watcher' ) );
 		}
 		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'actvt_export_logs' ) ) {
-			wp_die( 'Security check failed.' );
+			wp_die( esc_html__( 'Security check failed.', 'actvt-watcher' ) );
 		}
 
 		global $wpdb;
@@ -367,7 +372,7 @@ class Actvt_Watcher_Admin {
 	 */
 	public function export_settings() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Insufficient permissions.' );
+			wp_die( esc_html__( 'Insufficient permissions.', 'actvt-watcher' ) );
 		}
 		check_admin_referer( 'actvt_export_settings' );
 
@@ -392,7 +397,7 @@ class Actvt_Watcher_Admin {
 	 */
 	public function import_settings() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Insufficient permissions.' );
+			wp_die( esc_html__( 'Insufficient permissions.', 'actvt-watcher' ) );
 		}
 		check_admin_referer( 'actvt_import_settings' );
 
@@ -435,14 +440,14 @@ class Actvt_Watcher_Admin {
 	public function save_filter_preset() {
 		check_ajax_referer( 'actvt_filter_preset', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( 'Insufficient permissions.' );
+			wp_send_json_error( __( 'Insufficient permissions.', 'actvt-watcher' ) );
 		}
 
 		$name = sanitize_text_field( $_POST['preset_name'] ?? '' );
 		$qs   = sanitize_text_field( $_POST['query_string'] ?? '' );
 
 		if ( ! $name ) {
-			wp_send_json_error( 'Preset name is required.' );
+			wp_send_json_error( __( 'Preset name is required.', 'actvt-watcher' ) );
 		}
 
 		$user_id = get_current_user_id();
@@ -464,7 +469,7 @@ class Actvt_Watcher_Admin {
 	public function delete_filter_preset() {
 		check_ajax_referer( 'actvt_filter_preset', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( 'Insufficient permissions.' );
+			wp_send_json_error( __( 'Insufficient permissions.', 'actvt-watcher' ) );
 		}
 
 		$name = sanitize_text_field( $_POST['preset_name'] ?? '' );
