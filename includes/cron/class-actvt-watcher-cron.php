@@ -15,11 +15,31 @@ class Actvt_Watcher_Cron {
     const PURGE_HOOK   = 'actvt_watcher_purge_event';
 
     public function __construct() {
+        add_filter( 'cron_schedules', array( $this, 'add_cron_schedules' ) );
         add_action( self::REPORT_HOOK, array( $this, 'run_report' ) );
         add_action( self::PURGE_HOOK,  array( $this, 'purge_old_logs' ) );
 
         $this->schedule_report();
         $this->schedule_purge();
+    }
+
+    /**
+     * Define custom cron intervals.
+     */
+    public function add_cron_schedules( $schedules ) {
+        if ( ! isset( $schedules['weekly'] ) ) {
+            $schedules['weekly'] = array(
+                'interval' => WEEK_IN_SECONDS,
+                'display'  => esc_html__( 'Once Weekly', 'actvt-watcher' ),
+            );
+        }
+        if ( ! isset( $schedules['monthly'] ) ) {
+            $schedules['monthly'] = array(
+                'interval' => 30 * DAY_IN_SECONDS,
+                'display'  => esc_html__( 'Once Monthly', 'actvt-watcher' ),
+            );
+        }
+        return $schedules;
     }
 
     // ── Schedule helpers ─────────────────────────────────────────────────
@@ -28,18 +48,18 @@ class Actvt_Watcher_Cron {
      * Schedule (or reschedule) the email report cron based on current settings.
      * Called on construct AND after settings save.
      */
-    public static function schedule_report() {
+    public static function schedule_report( $force_reschedule = false ) {
         $settings = get_option( 'actvt_watcher_settings', array() );
         $enabled  = ! empty( $settings['email_enabled'] );
         $interval = isset( $settings['email_interval'] ) ? $settings['email_interval'] : 'monthly';
 
-        // Clear existing schedule
+        // Check current schedule
         $next = wp_next_scheduled( self::REPORT_HOOK );
-        if ( $next ) {
-            wp_unschedule_event( $next, self::REPORT_HOOK );
-        }
 
         if ( ! $enabled ) {
+            if ( $next ) {
+                wp_unschedule_event( $next, self::REPORT_HOOK );
+            }
             return; // email reports disabled — don't reschedule
         }
 
@@ -50,6 +70,18 @@ class Actvt_Watcher_Cron {
             'monthly' => 'monthly',
         );
         $recurrence = isset( $recurrence_map[ $interval ] ) ? $recurrence_map[ $interval ] : 'monthly';
+
+        $event = wp_get_scheduled_event( self::REPORT_HOOK );
+
+        // If not forcing a reschedule, and it is already scheduled with correct recurrence, do nothing.
+        if ( ! $force_reschedule && $next && $event && $event->schedule === $recurrence ) {
+            return;
+        }
+
+        // Clear existing schedule since we will create a new one
+        if ( $next ) {
+            wp_unschedule_event( $next, self::REPORT_HOOK );
+        }
 
         // Compute first run time based on settings
         $time_str = isset( $settings['email_time'] ) ? $settings['email_time'] : '08:00';

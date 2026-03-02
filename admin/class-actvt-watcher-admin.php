@@ -194,7 +194,7 @@ class Actvt_Watcher_Admin {
 		update_option( 'actvt_watcher_settings', $settings );
 
 		// Reschedule cron with updated email settings
-		Actvt_Watcher_Cron::schedule_report();
+		Actvt_Watcher_Cron::schedule_report( true );
 		Actvt_Watcher_Cron::schedule_purge();
 
 		wp_redirect( add_query_arg( array( 'page' => 'actvt-watcher-settings', 'saved' => 1 ), admin_url( 'admin.php' ) ) );
@@ -422,7 +422,7 @@ class Actvt_Watcher_Admin {
 		update_option( 'actvt_watcher_settings', $imported );
 
 		// Re-schedule cron with potentially updated email/purge settings
-		Actvt_Watcher_Cron::schedule_report();
+		Actvt_Watcher_Cron::schedule_report( true );
 		Actvt_Watcher_Cron::schedule_purge();
 
 		wp_redirect( add_query_arg( 'saved', 'imported', $redirect ) );
