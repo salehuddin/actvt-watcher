@@ -364,7 +364,213 @@ class Actvt_Watcher_Admin {
 	}
 
 	// ═══════════════════════════════════════════════════════════════
-	//  FEATURE: Export / Import Settings
+	//  FEATURE: Manual Email Report
+	// ═══════════════════════════════════════════════════════════════
+
+	/**
+	 * Send an on-demand HTML report + CSV attachment.
+	 * Hooked on: admin_post_actvt_send_manual_report
+	 */
+	public function send_manual_report() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Insufficient permissions.', 'actvt-watcher' ) );
+		}
+		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'actvt_send_manual_report' ) ) {
+			wp_die( esc_html__( 'Security check failed.', 'actvt-watcher' ) );
+		}
+
+		$to = isset( $_POST['report_email'] ) ? sanitize_email( $_POST['report_email'] ) : '';
+		if ( ! is_email( $to ) ) {
+			wp_redirect( add_query_arg( array( 'page' => 'actvt-watcher', 'actvt_report_error' => 'invalid_email' ), admin_url( 'admin.php' ) ) );
+			exit;
+		}
+
+		global $wpdb;
+		$table_name      = $wpdb->prefix . 'actvt_watcher_logs';
+		$all_event_types = array( 'auth', 'content', 'system', 'security', 'general' );
+
+		// ── Sanitize filters (from POST, passed as hidden fields) ──────────
+		if ( isset( $_POST['event_type'] ) && is_array( $_POST['event_type'] ) ) {
+			$filter_event_types = array_filter(
+				array_map( 'sanitize_text_field', $_POST['event_type'] ),
+				function( $t ) use ( $all_event_types ) { return in_array( $t, $all_event_types, true ); }
+			);
+		} else {
+			$filter_event_types = array();
+		}
+
+		$filter_user_id   = isset( $_POST['filter_user'] ) ? intval( $_POST['filter_user'] ) : 0;
+		$filter_period    = isset( $_POST['period'] )    ? sanitize_text_field( $_POST['period'] )    : '';
+		$filter_date_from = isset( $_POST['date_from'] ) ? sanitize_text_field( $_POST['date_from'] ) : '';
+		$filter_date_to   = isset( $_POST['date_to'] )   ? sanitize_text_field( $_POST['date_to'] )   : '';
+		$search_query     = isset( $_POST['s'] )         ? sanitize_text_field( $_POST['s'] )         : '';
+
+		// Resolve period presets
+		if ( $filter_period && $filter_period !== 'custom' ) {
+			switch ( $filter_period ) {
+				case 'this_month':
+					$filter_date_from = date( 'Y-m-01' );
+					$filter_date_to   = date( 'Y-m-t' );
+					break;
+				case 'last_month':
+					$filter_date_from = date( 'Y-m-01', strtotime( 'first day of last month' ) );
+					$filter_date_to   = date( 'Y-m-t',  strtotime( 'last day of last month' ) );
+					break;
+				case 'last_3_months':
+					$filter_date_from = date( 'Y-m-01', strtotime( '-2 months' ) );
+					$filter_date_to   = date( 'Y-m-t' );
+					break;
+			}
+		}
+
+		// ── Build WHERE clause ─────────────────────────────────────────────
+		$where_clauses = array( '1=1' );
+		$prepare_args  = array();
+
+		if ( ! empty( $filter_event_types ) && count( $filter_event_types ) < count( $all_event_types ) ) {
+			$placeholders    = implode( ', ', array_fill( 0, count( $filter_event_types ), '%s' ) );
+			$where_clauses[] = "event_type IN ( $placeholders )";
+			foreach ( $filter_event_types as $et ) { $prepare_args[] = $et; }
+		}
+		if ( $filter_user_id > 0 ) {
+			$where_clauses[] = 'user_id = %d';
+			$prepare_args[]  = $filter_user_id;
+		}
+		if ( $filter_date_from ) {
+			$where_clauses[] = 'DATE(timestamp) >= %s';
+			$prepare_args[]  = $filter_date_from;
+		}
+		if ( $filter_date_to ) {
+			$where_clauses[] = 'DATE(timestamp) <= %s';
+			$prepare_args[]  = $filter_date_to;
+		}
+		if ( $search_query ) {
+			$where_clauses[] = '(action LIKE %s OR metadata LIKE %s OR ip_address LIKE %s)';
+			$like            = '%' . $wpdb->esc_like( $search_query ) . '%';
+			$prepare_args[]  = $like;
+			$prepare_args[]  = $like;
+			$prepare_args[]  = $like;
+		}
+
+		$where_sql = implode( ' AND ', $where_clauses );
+
+		// ── Digest query (grouped) ─────────────────────────────────────────
+		$digest_sql  = "SELECT event_type, user_id, COUNT(*) as cnt FROM {$table_name} WHERE {$where_sql} GROUP BY event_type, user_id ORDER BY cnt DESC";
+		$digest_rows = ! empty( $prepare_args )
+			? $wpdb->get_results( $wpdb->prepare( $digest_sql, ...$prepare_args ) )
+			: $wpdb->get_results( $digest_sql );
+
+		// ── Full rows for CSV ──────────────────────────────────────────────
+		$full_sql  = "SELECT * FROM {$table_name} WHERE {$where_sql} ORDER BY timestamp DESC";
+		$full_rows = ! empty( $prepare_args )
+			? $wpdb->get_results( $wpdb->prepare( $full_sql, ...$prepare_args ), ARRAY_A )
+			: $wpdb->get_results( $full_sql, ARRAY_A );
+
+		// ── Build HTML digest ──────────────────────────────────────────────
+		$label_parts = array();
+		if ( $filter_date_from || $filter_date_to ) {
+			$label_parts[] = trim( $filter_date_from . ' – ' . $filter_date_to, ' – ' );
+		} elseif ( $filter_period ) {
+			$label_parts[] = ucwords( str_replace( '_', ' ', $filter_period ) );
+		} else {
+			$label_parts[] = 'All Time';
+		}
+		if ( ! empty( $filter_event_types ) ) {
+			$label_parts[] = implode( ', ', array_map( 'ucfirst', $filter_event_types ) );
+		}
+		$label     = implode( ' | ', $label_parts );
+		$site_name = get_bloginfo( 'name' );
+
+		$rows_html = '';
+		if ( ! empty( $digest_rows ) ) {
+			foreach ( $digest_rows as $row ) {
+				$user   = get_userdata( $row->user_id );
+				$uname  = $user ? esc_html( $user->user_login ) : 'Guest/System';
+				$rows_html .= sprintf(
+					'<tr><td style="padding:6px 12px; border-bottom:1px solid #eee;">%s</td><td style="padding:6px 12px; border-bottom:1px solid #eee;">%s</td><td style="padding:6px 12px; border-bottom:1px solid #eee; text-align:right;"><strong>%d</strong></td></tr>',
+					esc_html( $row->event_type ), $uname, intval( $row->cnt )
+				);
+			}
+		} else {
+			$rows_html = '<tr><td colspan="3" style="padding:12px; text-align:center; color:#646970;">No activity found for this period.</td></tr>';
+		}
+
+		$log_url  = admin_url( 'admin.php?page=actvt-watcher' );
+		$html = <<<HTML
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif; color:#1d2327; margin:0; padding:0;">
+  <table width="600" cellpadding="0" cellspacing="0" style="margin:30px auto; border:1px solid #c3c4c7; border-radius:6px; overflow:hidden;">
+    <tr><td style="background:#2271b1; padding:20px 24px;">
+      <h2 style="color:#fff; margin:0; font-size:18px;">&#128203; Activity Report &mdash; {$site_name}</h2>
+      <p style="color:#c8d8ea; margin:6px 0 0; font-size:13px;">{$label}</p>
+    </td></tr>
+    <tr><td style="padding:24px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr style="background:#f6f7f7;">
+            <th style="padding:8px 12px; text-align:left; font-size:12px; text-transform:uppercase; color:#646970;">Event Type</th>
+            <th style="padding:8px 12px; text-align:left; font-size:12px; text-transform:uppercase; color:#646970;">User</th>
+            <th style="padding:8px 12px; text-align:right; font-size:12px; text-transform:uppercase; color:#646970;">Count</th>
+          </tr>
+        </thead>
+        <tbody>{$rows_html}</tbody>
+      </table>
+      <p style="margin-top:24px; font-size:12px; color:#646970;">
+        Generated by ACTVT Watcher &bull; <a href="{$log_url}" style="color:#2271b1;">View full logs</a><br>
+        A full CSV export is attached to this email.
+      </p>
+    </td></tr>
+  </table>
+</body>
+</html>
+HTML;
+
+		// ── Build CSV attachment ───────────────────────────────────────────
+		$csv_filename = 'actvt-report-' . date( 'Y-m-d-His' ) . '.csv';
+		$csv_path     = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $csv_filename;
+
+		ob_start();
+		$buf = fopen( 'php://output', 'w' );
+		fprintf( $buf, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM
+		fputcsv( $buf, array( 'ID', 'Timestamp', 'User ID', 'Username', 'User Role', 'Event Type', 'Action', 'Object ID', 'Metadata', 'IP Address' ) );
+		foreach ( $full_rows as $row ) {
+			$u         = get_userdata( $row['user_id'] );
+			$username  = $u ? $u->user_login : ( $row['user_id'] > 0 ? '#' . $row['user_id'] : 'Guest' );
+			$meta_raw  = $row['metadata'];
+			$meta_dec  = json_decode( $meta_raw, true );
+			if ( is_array( $meta_dec ) ) {
+				$parts = array();
+				array_walk_recursive( $meta_dec, function( $v, $k ) use ( &$parts ) {
+					$parts[] = $k . ': ' . ( is_bool( $v ) ? ( $v ? 'true' : 'false' ) : $v );
+				} );
+				$meta_cell = implode( ' | ', $parts );
+			} else {
+				$meta_cell = str_replace( array( '\\"', '\\' ), array( "'", '' ), $meta_raw );
+			}
+			fputcsv( $buf, array(
+				$row['id'], $row['timestamp'], $row['user_id'], $username,
+				$row['user_role'], $row['event_type'], $row['action'],
+				$row['object_id'], $meta_cell, $row['ip_address'],
+			) );
+		}
+		fclose( $buf );
+		$csv_content = ob_get_clean();
+		file_put_contents( $csv_path, $csv_content );
+
+		// ── Send email ─────────────────────────────────────────────────────
+		$subject = sprintf( '[%s] Manual Activity Report — %s', $site_name, $label );
+		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
+		wp_mail( $to, $subject, $html, $headers, array( $csv_path ) );
+		@unlink( $csv_path );
+
+		wp_redirect( add_query_arg( array( 'page' => 'actvt-watcher', 'actvt_report_sent' => 1 ), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	// ═══════════════════════════════════════════════════════════════
+	//  FEATURE: Export Logs
 	// ═══════════════════════════════════════════════════════════════
 
 	/**
