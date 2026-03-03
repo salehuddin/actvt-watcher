@@ -63,9 +63,10 @@ class Actvt_Watcher {
 	private function define_admin_hooks() {
 		$plugin_admin = new Actvt_Watcher_Admin( $this->plugin_name, $this->version );
         add_action( 'admin_menu',                        array( $plugin_admin, 'add_plugin_admin_menu' ) );
-        add_action( 'admin_post_actvt_export_logs',      array( $plugin_admin, 'export_logs' ) );
-        add_action( 'admin_post_actvt_save_settings',    array( $plugin_admin, 'save_settings' ) );
-        add_action( 'admin_post_actvt_purge_now',        array( $plugin_admin, 'purge_now' ) );
+        add_action( 'admin_post_actvt_export_logs',          array( $plugin_admin, 'export_logs' ) );
+        add_action( 'admin_post_actvt_save_settings',        array( $plugin_admin, 'save_settings' ) );
+        add_action( 'admin_post_actvt_purge_now',            array( $plugin_admin, 'purge_now' ) );
+        add_action( 'admin_post_actvt_send_manual_report',   array( $plugin_admin, 'send_manual_report' ) );
         // Settings export / import
         add_action( 'admin_post_actvt_export_settings',  array( $plugin_admin, 'export_settings' ) );
         add_action( 'admin_post_actvt_import_settings',  array( $plugin_admin, 'import_settings' ) );

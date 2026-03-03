@@ -630,47 +630,45 @@ $badge_map = array(
                 </div>
 
             </div><!-- .actvt-filters-row -->
-
-            <!-- Email Report inline panel -->
-            <div id="actvt-email-report-panel" style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid #dcdcde;">
-                <?php
-                $report_form_args = array(
-                    'action'      => 'actvt_send_manual_report',
-                    'filter_user' => $filter_user_id ?: '',
-                    'period'      => $filter_period,
-                    'date_from'   => ( $filter_period === 'custom' ) ? $filter_date_from : '',
-                    'date_to'     => ( $filter_period === 'custom' ) ? $filter_date_to   : '',
-                    's'           => $search_query,
-                );
-                ?>
-                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <?php wp_nonce_field( 'actvt_send_manual_report' ); ?>
-                    <?php foreach ( $report_form_args as $k => $v ) : ?>
-                        <input type="hidden" name="<?php echo esc_attr( $k ); ?>" value="<?php echo esc_attr( $v ); ?>">
-                    <?php endforeach; ?>
-                    <?php foreach ( $filter_event_types as $et_val ) : ?>
-                        <input type="hidden" name="event_type[]" value="<?php echo esc_attr( $et_val ); ?>">
-                    <?php endforeach; ?>
-
-                    <div class="actvt-fg">
-                        <label for="actvt-report-email" style="font-size:11px; font-weight:600; color:#646970; text-transform:uppercase; letter-spacing:.5px;">Send Report To</label>
-                        <input type="email" id="actvt-report-email" name="report_email"
-                               value="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>"
-                               placeholder="email@example.com"
-                               style="height:30px; min-width:250px; padding:0 8px;" required>
-                    </div>
-
-                    <div style="padding-top:16px;">
-                        <button type="submit" class="button button-primary" style="height:30px; line-height:28px; padding:0 12px;">
-                            <span class="dashicons dashicons-email-alt" style="font-size:15px; width:15px; height:15px; line-height:1; margin-top:7px; margin-right:3px;"></span>
-                            Send Now
-                        </button>
-                        <button type="button" id="actvt-email-report-cancel" class="button" style="height:30px; line-height:28px; padding:0 10px; margin-left:4px;">Cancel</button>
-                    </div>
-                </form>
-            </div><!-- .actvt-email-report-panel -->
         </div><!-- .actvt-filters-panel -->
     </form><!-- #actvt-filter-form -->
+
+    <!-- Email Report panel (OUTSIDE the filter form — nested forms are invalid HTML) -->
+    <div id="actvt-email-report-panel" style="display:none; background:#fff; border:1px solid #c3c4c7; border-radius:4px; padding:16px 18px; margin-bottom:16px;">
+        <?php
+        $report_form_args = array(
+            'action'      => 'actvt_send_manual_report',
+            'filter_user' => $filter_user_id ?: '',
+            'period'      => $filter_period,
+            'date_from'   => ( $filter_period === 'custom' ) ? $filter_date_from : '',
+            'date_to'     => ( $filter_period === 'custom' ) ? $filter_date_to   : '',
+            's'           => $search_query,
+        );
+        ?>
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+            <?php wp_nonce_field( 'actvt_send_manual_report' ); ?>
+            <?php foreach ( $report_form_args as $k => $v ) : ?>
+                <input type="hidden" name="<?php echo esc_attr( $k ); ?>" value="<?php echo esc_attr( $v ); ?>">
+            <?php endforeach; ?>
+            <?php foreach ( $filter_event_types as $et_val ) : ?>
+                <input type="hidden" name="event_type[]" value="<?php echo esc_attr( $et_val ); ?>">
+            <?php endforeach; ?>
+
+            <div class="actvt-fg">
+                <label for="actvt-report-email" style="font-size:11px; font-weight:600; color:#646970; text-transform:uppercase; letter-spacing:.5px;">Send Report To</label>
+                <input type="email" id="actvt-report-email" name="report_email"
+                       value="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>"
+                       placeholder="email@example.com"
+                       style="height:30px; min-width:260px; padding:0 8px;" required>
+            </div>
+
+            <button type="submit" class="button button-primary" style="height:30px; line-height:28px; padding:0 12px;">
+                <span class="dashicons dashicons-email-alt" style="font-size:15px; width:15px; height:15px; line-height:1; margin-top:7px; margin-right:3px;"></span>
+                Send Now
+            </button>
+            <button type="button" id="actvt-email-report-cancel" class="button" style="height:30px; line-height:28px; padding:0 10px;">Cancel</button>
+        </form>
+    </div>
 
     <?php
     // Load current user's presets for the presets bar
